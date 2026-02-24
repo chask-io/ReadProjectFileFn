@@ -9,8 +9,6 @@ ReadProjectFileFn - Business Logic
 
 import json
 import logging
-import ssl
-import urllib.request
 from typing import Dict, Any, List
 
 from chask_foundation.backend.models import OrchestrationEvent
@@ -83,20 +81,14 @@ class FunctionBackend:
         self, project_uuid: str, file_uuid: str, force_reindex: bool = False
     ) -> str:
         files = self._get_project_files(project_uuid)
-        target_file = None
-        for f in files:
-            if f.get("uuid") == file_uuid:
-                target_file = f
-                break
+        target_file = next(
+            (f for f in files if f.get("uuid") == file_uuid), None
+        )
 
         if not target_file:
             raise ValueError(f"File {file_uuid} not found in project {project_uuid}")
 
-        presigned_url = target_file.get("presigned_url")
-        if not presigned_url:
-            raise ValueError(f"No presigned URL available for file {file_uuid}")
-
-        content = self._download_file_content(presigned_url)
+        content = self._get_file_content(file_uuid)
 
         namespace = f"{NAMESPACE_PREFIX}-{project_uuid}"
         if force_reindex or not self._is_file_indexed(namespace, file_uuid):
@@ -169,11 +161,23 @@ class FunctionBackend:
 
         return response.get("files", [])
 
-    def _download_file_content(self, presigned_url: str) -> str:
-        ssl_context = ssl.create_default_context()
-        req = urllib.request.Request(presigned_url)
-        with urllib.request.urlopen(req, context=ssl_context, timeout=30) as resp:
-            return resp.read().decode("utf-8", errors="replace")
+    def _get_file_content(self, file_uuid: str) -> str:
+        response = files_api_manager.call(
+            "get_file_content",
+            file_uuid=file_uuid,
+            access_token=self.orchestration_event.access_token,
+            organization_id=self.orchestration_event.organization.organization_id,
+        )
+
+        if response.get("status_code") not in (200, 201):
+            error_msg = response.get("error", "Unknown error")
+            raise Exception(f"Failed to get file content: {error_msg}")
+
+        content = response.get("content")
+        if content is not None:
+            return content
+
+        return json.dumps(response)
 
     def _chunk_text(self, text: str) -> List[str]:
         chunks = []
@@ -215,17 +219,14 @@ class FunctionBackend:
     def _index_all_project_files(self, project_uuid: str, namespace: str) -> None:
         files = self._get_project_files(project_uuid)
         for f in files:
-            presigned_url = f.get("presigned_url")
-            if not presigned_url:
-                logger.warning(f"Skipping file {f.get('uuid')} - no presigned URL")
-                continue
+            file_uuid = f.get("uuid", "")
             try:
-                content = self._download_file_content(presigned_url)
+                content = self._get_file_content(file_uuid)
                 self._index_file(
-                    namespace, f.get("uuid", ""), f.get("filename", ""), content
+                    namespace, file_uuid, f.get("filename", ""), content
                 )
             except Exception as e:
-                logger.error(f"Failed to index file {f.get('uuid')}: {e}")
+                logger.error(f"Failed to index file {file_uuid}: {e}")
 
     def _is_file_indexed(self, namespace: str, file_uuid: str) -> bool:
         if not self.vector_store.namespace_exists(namespace):
