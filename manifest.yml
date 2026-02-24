@@ -1,0 +1,37 @@
+function:
+  name: ReadProjectFileFn
+  runtime: python3.12
+  handler: handler.lambda_handler
+  description: |
+    Lee el contenido de archivos de un proyecto. 3 modos: lista archivos, lee contenido (max 8000 chars), busca semanticamente con RAG/Pinecone
+  timeout: 300
+  memory_size: 1024
+
+  layers:
+    - foundationMinimal
+    - foundationApi
+
+  parameters:
+    required:
+      - name: project_uuid
+        type: string
+        description: UUID of the project to read files from
+
+    optional:
+      - name: file_uuid
+        type: string
+        description: UUID of a specific file to read
+      - name: query
+        type: string
+        description: Semantic search query for RAG-based file search
+      - name: force_reindex
+        type: boolean
+        description: Force reindexing of project files in vector store
+        default: false
+      - name: top_k
+        type: integer
+        description: Number of top results to return for semantic search
+        default: 5
+
+  widget:
+    enabled: false

@@ -1,0 +1,18 @@
+{
+  "function_name": "ReadProjectFileFn",
+  "args": {
+    "project_uuid": "test-project-uuid-1234"
+  },
+  "widget_params": {},
+  "prompt": "",
+  "event_type": "function_call",
+  "extra_params": {
+    "is_test": true,
+    "test_execution_uuid": "test-exec-uuid-5678"
+  },
+  "files": [],
+  "metadata": {
+    "description": "Basic test for ReadProjectFileFn - lists project files",
+    "expected_status": "success"
+  }
+}

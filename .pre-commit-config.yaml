@@ -1,0 +1,42 @@
+repos:
+  # Ruff - fast Python linter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        args: [--ignore, E501]
+        files: ^src/
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-ast
+        files: ^src/
+      - id: check-yaml
+        files: manifest\.yml$
+      - id: check-json
+        files: ^tests/.*\.json$
+      - id: detect-private-key
+
+  # Custom: validate test file schema
+  - repo: local
+    hooks:
+      - id: validate-test-schema
+        name: Validate test file schema
+        entry: |
+          python -c "
+          import json, glob, sys
+          errors = []
+          for f in glob.glob('tests/*.json'):
+              data = json.load(open(f))
+              if 'function_name' not in data or 'args' not in data:
+                  errors.append(f)
+          if errors:
+              print('Missing function_name or args in:', errors)
+              sys.exit(1)
+          print('Test files valid')
+          "
+        language: system
+        files: ^tests/.*\.json$
+        pass_filenames: false
