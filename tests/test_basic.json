@@ -1,7 +1,7 @@
 {
   "function_name": "ReadProjectFileFn",
   "args": {
-    "project_uuid": "test-project-uuid-1234"
+    "project_uuid": "d528da37-1469-41e5-9425-4f4003837443"
   },
   "widget_params": {},
   "prompt": "",
