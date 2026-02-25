@@ -1,7 +1,7 @@
 {
 	"function_uuid": "0e64deed-ca57-41e4-8479-79e39a83505f",
 	"organization_id": "c186a320-7f84-4004-b591-1b9880fb7bfd",
-	"last_published_at": "2026-02-25T00:17:58.999Z",
+	"last_published_at": "2026-02-25T02:52:04.156Z",
 	"function_arn": "ReadProjectFileFn-847979e39a83505f",
 	"function_name": "ReadProjectFileFn",
 	"git_ref": "main"
