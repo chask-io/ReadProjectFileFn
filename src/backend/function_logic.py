@@ -13,6 +13,7 @@ import json
 import logging
 import ssl
 import urllib.request
+import uuid as uuid_module
 from typing import Dict, Any, List
 
 from chask_foundation.backend.models import OrchestrationEvent
@@ -166,6 +167,7 @@ class FunctionBackend:
         project_uuid = tool_args.get("project_uuid")
         if not project_uuid:
             raise ValueError("Missing required parameter: project_uuid")
+        self._validate_uuid(project_uuid, "project_uuid")
 
         file_uuid = tool_args.get("file_uuid")
         query = tool_args.get("query")
@@ -175,6 +177,7 @@ class FunctionBackend:
         if query:
             return self._handle_rag_query(project_uuid, query, top_k, force_reindex)
         elif file_uuid:
+            self._validate_uuid(file_uuid, "file_uuid")
             return self._handle_file_read(project_uuid, file_uuid, force_reindex)
         else:
             return self._handle_list_files(project_uuid)
@@ -355,6 +358,16 @@ class FunctionBackend:
         except Exception as e:
             logger.warning(f"Error checking if file is indexed: {e}")
             return False
+
+    @staticmethod
+    def _validate_uuid(value: str, param_name: str) -> None:
+        """Validate that a value is a proper UUID format."""
+        try:
+            uuid_module.UUID(value)
+        except (ValueError, AttributeError):
+            raise ValueError(
+                f"{param_name} must be a valid UUID format, got: {value}"
+            )
 
     def _extract_tool_args(self) -> Dict[str, Any]:
         extra_params = self.orchestration_event.extra_params or {}
