@@ -12,8 +12,6 @@ import logging
 from typing import Dict, Any, List
 
 from chask_foundation.backend.models import OrchestrationEvent
-from chask_foundation.vector_store.factory import get_vector_store
-from chask_foundation.file_processing.services.openai_service import OpenAIService
 from api.files_requests import files_api_manager
 
 logger = logging.getLogger()
@@ -34,14 +32,16 @@ class FunctionBackend:
         self._vector_store = None
 
     @property
-    def openai_service(self) -> OpenAIService:
+    def openai_service(self):
         if self._openai_service is None:
+            from chask_foundation.file_processing.services.openai_service import OpenAIService
             self._openai_service = OpenAIService()
         return self._openai_service
 
     @property
     def vector_store(self):
         if self._vector_store is None:
+            from chask_foundation.vector_store.factory import get_vector_store
             self._vector_store = get_vector_store()
         return self._vector_store
 
