@@ -12,12 +12,12 @@ function:
     - foundationApi
 
   parameters:
-    required:
-      - name: project_uuid
-        type: string
-        description: UUID of the project to read files from
+    required: []
 
     optional:
+      - name: project_uuid
+        type: string
+        description: UUID of the project to read files from. Auto-resolved from the orchestration session if not provided.
       - name: file_uuid
         type: string
         description: UUID of a specific file to read

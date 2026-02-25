@@ -23,6 +23,7 @@ from chask_foundation.configs.global_config import (
     PINECONE_INDEX,
 )
 from api.files_requests import files_api_manager
+from api.orchestrator_requests import orchestrator_api_manager
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -164,9 +165,12 @@ class FunctionBackend:
     def process_request(self) -> str:
         tool_args = self._extract_tool_args()
 
-        project_uuid = tool_args.get("project_uuid")
+        project_uuid = tool_args.get("project_uuid") or self._resolve_project_uuid()
         if not project_uuid:
-            raise ValueError("Missing required parameter: project_uuid")
+            raise ValueError(
+                "Could not determine project_uuid. Either pass it as a parameter "
+                "or ensure the orchestration session is linked to a project."
+            )
         self._validate_uuid(project_uuid, "project_uuid")
 
         file_uuid = tool_args.get("file_uuid")
@@ -260,6 +264,28 @@ class FunctionBackend:
         return json.dumps({"query": query, "results": results, "total": len(results)})
 
     # ── API Helpers ──────────────────────────────────────────────────
+
+    def _resolve_project_uuid(self) -> str:
+        """Resolve project_uuid from the orchestration session."""
+        session_uuid = self.orchestration_event.orchestration_session_uuid
+        if not session_uuid:
+            return None
+
+        response = orchestrator_api_manager.call(
+            "get_single_orchestration_session",
+            orchestration_session_id=session_uuid,
+            access_token=self.orchestration_event.access_token,
+            organization_id=self.orchestration_event.organization.organization_id,
+        )
+
+        if response.get("status_code") not in (200, 201):
+            logger.warning(f"Failed to get session details: {response.get('error')}")
+            return None
+
+        project_uuid = response.get("project_uuid")
+        if project_uuid:
+            logger.info(f"Resolved project_uuid {project_uuid} from session {session_uuid}")
+        return project_uuid
 
     def _get_project_files(self, project_uuid: str) -> List[Dict[str, Any]]:
         response = files_api_manager.call(
