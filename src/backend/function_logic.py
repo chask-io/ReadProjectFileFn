@@ -11,8 +11,10 @@ Uses direct REST API calls to OpenAI and Pinecone to avoid numpy dependency.
 
 import json
 import logging
+import os
 import ssl
 import urllib.request
+import urllib.parse
 import uuid as uuid_module
 from typing import Dict, Any, List
 
@@ -23,7 +25,6 @@ from chask_foundation.configs.global_config import (
     PINECONE_INDEX,
 )
 from api.files_requests import files_api_manager
-from api.orchestrator_requests import orchestrator_api_manager
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -266,25 +267,49 @@ class FunctionBackend:
     # ── API Helpers ──────────────────────────────────────────────────
 
     def _resolve_project_uuid(self) -> str:
-        """Resolve project_uuid from the orchestration session."""
-        session_uuid = self.orchestration_event.orchestration_session_uuid
-        if not session_uuid:
+        """Resolve project_uuid from the orchestration session.
+
+        Calls get-single-orchestration-session directly because the foundation
+        API registration sends the wrong query-param name (orchestration_session_id
+        instead of orchestration_session_uuid).
+        """
+        oe = self.orchestration_event
+        session_uuid = oe.orchestration_session_uuid
+        internal_uuid = oe.internal_orchestration_session_uuid
+
+        if not session_uuid and not internal_uuid:
             return None
 
-        response = orchestrator_api_manager.call(
-            "get_single_orchestration_session",
-            orchestration_session_id=session_uuid,
-            access_token=self.orchestration_event.access_token,
-            organization_id=self.orchestration_event.organization.organization_id,
+        # Build query params with the correct names the Django view expects
+        params = {}
+        if session_uuid:
+            params["orchestration_session_uuid"] = session_uuid
+        else:
+            params["internal_orchestration_session_uuid"] = internal_uuid
+
+        base_domain = os.getenv("BASE_DOMAIN")
+        url = (
+            f"https://{base_domain}/api/v2/orchestrator/"
+            f"get-single-orchestration-session?{urllib.parse.urlencode(params)}"
         )
+        headers = {
+            "Authorization": f"Bearer {oe.access_token}",
+            "Organization-ID": oe.organization.organization_id,
+            "Content-Type": "application/json",
+        }
 
-        if response.get("status_code") not in (200, 201):
-            logger.warning(f"Failed to get session details: {response.get('error')}")
+        try:
+            resp = _https_get(url, headers)
+        except Exception as e:
+            logger.warning(f"Failed to get session details: {e}")
             return None
 
-        project_uuid = response.get("project_uuid")
+        project_uuid = resp.get("project_uuid")
+        lookup_key = session_uuid or internal_uuid
         if project_uuid:
-            logger.info(f"Resolved project_uuid {project_uuid} from session {session_uuid}")
+            logger.info(f"Resolved project_uuid {project_uuid} from session {lookup_key}")
+        else:
+            logger.warning(f"Session {lookup_key} has no linked project")
         return project_uuid
 
     def _get_project_files(self, project_uuid: str) -> List[Dict[str, Any]]:
