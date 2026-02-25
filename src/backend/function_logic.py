@@ -304,7 +304,9 @@ class FunctionBackend:
             logger.warning(f"Failed to get session details: {e}")
             return None
 
-        project_uuid = resp.get("project_uuid")
+        # Response is nested: {"orchestration_session": {..., "project_uuid": ...}}
+        session_data = resp.get("orchestration_session", {})
+        project_uuid = session_data.get("project_uuid")
         lookup_key = session_uuid or internal_uuid
         if project_uuid:
             logger.info(f"Resolved project_uuid {project_uuid} from session {lookup_key}")
