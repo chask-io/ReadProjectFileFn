@@ -1,0 +1,19 @@
+{
+  "function_name": "ReadProjectFileFn",
+  "args": {
+    "project_uuid": "d528da37-1469-41e5-9425-4f4003837443",
+    "query": "extraer RUT, formato rut, pdf"
+  },
+  "widget_params": {},
+  "prompt": "",
+  "event_type": "function_call",
+  "extra_params": {
+    "is_test": true,
+    "test_execution_uuid": "test-rag-query-uuid-001"
+  },
+  "files": [],
+  "metadata": {
+    "description": "Test RAG query mode - semantic search across project files",
+    "expected_status": "success"
+  }
+}
